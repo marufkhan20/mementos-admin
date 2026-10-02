@@ -1,9 +1,9 @@
-import Link from "next/link";
-import { fetchDevices } from "@/lib/convex-admin";
-import { Badge, Card, EmptyState } from "@/components/ui";
 import { PhoneFrame } from "@/components/PhoneFrame";
+import { Badge, Card, EmptyState } from "@/components/ui";
 import { WallpaperPreview } from "@/components/WallpaperPreview";
+import { fetchDevices } from "@/lib/convex-admin";
 import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -24,8 +24,8 @@ export default async function DevicesPage({
         <div>
           <h1 className="text-xl font-semibold text-white">Devices</h1>
           <p className="text-sm text-neutral-500">
-            Every install that has ever reported in — rendered as it actually looks on
-            their lock screen right now, most recently active first.
+            Every install that has ever reported in — rendered as it actually
+            looks on their lock screen right now, most recently active first.
           </p>
         </div>
 
@@ -68,6 +68,7 @@ export default async function DevicesPage({
                   lastWallpaperUpdateAt={d.lastWallpaperUpdateAt}
                   width={PREVIEW_W}
                   height={PREVIEW_H}
+                  devices={true}
                 />
               </PhoneFrame>
 
@@ -76,7 +77,9 @@ export default async function DevicesPage({
                   {d.deviceId}
                 </span>
                 <div className="flex items-center gap-1.5">
-                  <Badge tone={d.isPro ? "pro" : "free"}>{d.isPro ? "Pro" : "Free"}</Badge>
+                  <Badge tone={d.isPro ? "pro" : "free"}>
+                    {d.isPro ? "Pro" : "Free"}
+                  </Badge>
                   <span className="text-[10px] text-neutral-500">
                     {formatDistanceToNow(d.lastSeenAt, { addSuffix: true })}
                   </span>
