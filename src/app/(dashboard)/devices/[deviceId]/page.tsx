@@ -1,7 +1,9 @@
 import { PhoneFrame } from "@/components/PhoneFrame";
 import { Badge, Card, EmptyState, EventBadge } from "@/components/ui";
 import { WallpaperPreview } from "@/components/WallpaperPreview";
+import { DeviceDebugModal } from "@/components/DeviceDebugModal";
 import { fetchDevice } from "@/lib/convex-admin";
+import { getGoalStats } from "@/lib/goalStats";
 import { format, formatDistanceToNow } from "date-fns";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -9,7 +11,7 @@ import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-const PREVIEW_W = 220;
+const PREVIEW_W = 320;
 const PREVIEW_H = Math.round(PREVIEW_W * 2.16);
 
 export default async function DeviceDetailPage({
@@ -21,7 +23,20 @@ export default async function DeviceDetailPage({
   const data = await fetchDevice(deviceId);
   if (!data) notFound();
 
-  const { device, goal, events, lastWallpaperUpdateAt } = data;
+  const { device, goal, events, lastWallpaperUpdateAt, linkedUser } = data;
+
+  const stats =
+    goal?.startDate && goal?.endDate
+      ? (() => {
+          const actualAsOf = lastWallpaperUpdateAt
+            ? new Date(lastWallpaperUpdateAt)
+            : new Date(goal.startDate);
+          const actual = getGoalStats(goal.startDate, goal.endDate, actualAsOf);
+          const expected = getGoalStats(goal.startDate, goal.endDate);
+          const daysMissed = Math.max(0, expected.daysPassed - actual.daysPassed);
+          return { actual, expected, daysMissed };
+        })()
+      : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -48,22 +63,83 @@ export default async function DeviceDetailPage({
       </div>
 
       <div className="flex flex-col gap-4 md:flex-row">
-        <Card className="flex shrink-0 items-center justify-center">
-          <PhoneFrame width={PREVIEW_W}>
-            <WallpaperPreview
-              variantStyle={goal?.variantStyle ?? null}
-              title={goal?.title ?? null}
-              startDate={goal?.startDate ?? null}
-              endDate={goal?.endDate ?? null}
-              accent={goal?.accent ?? null}
-              lastWallpaperUpdateAt={lastWallpaperUpdateAt}
-              width={PREVIEW_W}
-              height={PREVIEW_H}
-            />
-          </PhoneFrame>
+        <Card className="flex shrink-0 flex-col items-center justify-center gap-2">
+          {stats ? (
+            <>
+              <DeviceDebugModal
+                variantStyle={goal?.variantStyle ?? null}
+                title={goal?.title ?? null}
+                startDate={goal?.startDate ?? null}
+                endDate={goal?.endDate ?? null}
+                accent={goal?.accent ?? null}
+                lastWallpaperUpdateAt={lastWallpaperUpdateAt}
+                width={PREVIEW_W}
+                height={PREVIEW_H}
+                isPro={device.isPro}
+                canScheduleExactAlarms={device.canScheduleExactAlarms}
+                ignoringBatteryOptimizations={device.ignoringBatteryOptimizations}
+                events={events}
+                actualPct={stats.actual.pct}
+                expectedPct={stats.expected.pct}
+                daysLeft={stats.actual.daysLeft}
+                daysMissed={stats.daysMissed}
+              />
+              <p className="text-[11px] text-neutral-600">Click to debug</p>
+            </>
+          ) : (
+            <PhoneFrame width={PREVIEW_W}>
+              <WallpaperPreview
+                variantStyle={null}
+                title={null}
+                startDate={null}
+                endDate={null}
+                accent={null}
+                lastWallpaperUpdateAt={lastWallpaperUpdateAt}
+                width={PREVIEW_W}
+                height={PREVIEW_H}
+              />
+            </PhoneFrame>
+          )}
         </Card>
 
-        <div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card>
+            <h2 className="mb-3 text-sm font-medium text-white">
+              Linked account
+            </h2>
+            {linkedUser ? (
+              <div className="flex items-center gap-3">
+                {linkedUser.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={linkedUser.image}
+                    alt=""
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-800 text-sm font-medium text-neutral-300">
+                    {(linkedUser.name ?? linkedUser.email ?? "?")
+                      .charAt(0)
+                      .toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-neutral-200">
+                    {linkedUser.name ?? "—"}
+                  </p>
+                  <p className="truncate text-xs text-neutral-500">
+                    {linkedUser.email ?? "—"}
+                  </p>
+                </div>
+                <Badge tone={linkedUser.isPro ? "pro" : "free"}>
+                  {linkedUser.isPro ? "Pro" : "Free"}
+                </Badge>
+              </div>
+            ) : (
+              <EmptyState message="Not signed in on this device." />
+            )}
+          </Card>
+
           <Card>
             <h2 className="mb-3 text-sm font-medium text-white">
               Current goal
@@ -75,9 +151,17 @@ export default async function DeviceDetailPage({
                 <dt className="text-neutral-500">Style</dt>
                 <dd className="text-neutral-200">{goal.variantStyle ?? "—"}</dd>
                 <dt className="text-neutral-500">Start</dt>
-                <dd className="text-neutral-200">{goal.startDate ?? "—"}</dd>
+                <dd className="text-neutral-200">
+                  {goal.startDate
+                    ? format(new Date(goal.startDate), "MMM d, yyyy")
+                    : "—"}
+                </dd>
                 <dt className="text-neutral-500">End</dt>
-                <dd className="text-neutral-200">{goal.endDate ?? "—"}</dd>
+                <dd className="text-neutral-200">
+                  {goal.endDate
+                    ? format(new Date(goal.endDate), "MMM d, yyyy")
+                    : "—"}
+                </dd>
                 <dt className="text-neutral-500">Accent</dt>
                 <dd className="flex items-center gap-2 text-neutral-200">
                   {goal.accent && (

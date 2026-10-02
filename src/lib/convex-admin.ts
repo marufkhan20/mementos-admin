@@ -85,6 +85,13 @@ export async function fetchDevices(
   });
 }
 
+export type LinkedUser = {
+  name: string | null;
+  email: string | null;
+  image: string | null;
+  isPro: boolean;
+};
+
 export async function fetchDevice(deviceId: string) {
   const client = getClient();
   return client.query(anyApi.admin.getDevice, {
@@ -95,6 +102,7 @@ export async function fetchDevice(deviceId: string) {
     goal: any;
     events: DeviceEvent[];
     lastWallpaperUpdateAt: number | null;
+    linkedUser: LinkedUser | null;
   } | null>;
 }
 
